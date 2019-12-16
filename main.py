@@ -68,7 +68,7 @@ def tcp_listener( host_name, host_ip, lock ):
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        s.bind((host_ip,12345))
+        s.bind(('',12345))
         s.listen(10)
         while True:
             conn, addr = s.accept()
@@ -94,7 +94,7 @@ def tcp_listener( host_name, host_ip, lock ):
                         print(pubkey_message)
                         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                             s.connect((data[1].strip(),12345))
-                            s.sendall(str.encode(response_message))
+                            s.sendall(str.encode(pubkey_message))
                     elif data[2].strip() == 'pubkey':
                         a = encryption_keys[data[1].strip()]
                         B = int(data[3].strip())
