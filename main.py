@@ -1,14 +1,15 @@
 users = {}
 encryption_keys = {}
+old_keys = {}
 G = 10399
 P = 11503
 host_ip = "192.168.1.104"
 from threading import Lock
 lock = Lock()
 tcp_lock = Lock()
+
 ## [emin,192.168.1.2,newKey,G,P,A]
 ## [esra,192.168.1.3,pubkey,B]
-
 
 def send_response( host_name, host_ip, target_ip ):
     import socket
@@ -40,6 +41,7 @@ def send_message( host_name, target_ip, message, lock ):
             s.connect((target_ip,12345))
             s.sendall(response_message)
         encryption_keys[target_ip] = encryption_keys[target_ip] * len(message) % P
+        print("new key", encryption_keys[target_ip])
 
 def announcement_listener( host_name, host_ip ):
     import select, socket
@@ -128,6 +130,7 @@ def tcp_listener( host_name, host_ip, lock, tcp_lock ):
                         wowkey = str(encryption_keys[header[1].strip()])
                         decrypted = pyDes.triple_des(wowkey.ljust(24)).decrypt(data, padmode=2).decode("ascii")
                         encryption_keys[header[1].strip()] = encryption_keys[header[1].strip()] * len(decrypted) % P
+                        print("new key", encryption_keys[header[1].strip()])
                         print(header[0].strip() + ": " + decrypted)
 
 import _thread
