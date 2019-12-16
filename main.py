@@ -2,7 +2,7 @@ users = {}
 encryption_keys = {}
 G = 10399
 P = 11503
-host_ip = "FILL HERE"
+host_ip = "192.168.1.104"
 from threading import Lock
 lock = Lock()
 ## [emin,192.168.1.2,newKey,G,P,A]
@@ -12,6 +12,7 @@ lock = Lock()
 def send_response( host_name, host_ip, target_ip ):
     import socket
     response_message = '[' + host_name + ',' + host_ip + ',response]'
+    print(response_message)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((target_ip,12345))
         s.sendall(str.encode(response_message))
@@ -25,11 +26,13 @@ def send_message( host_name, target_ip, message, lock ):
         a = random.randint(1,P-1)
         A = pow(G,a) % P
         key_message = '[' + host_name + ',' + host_ip + ',newKey,' + str(G) + ','+ str(P) + ','+ str(A) + ']'
+        print(key_message)
         encryption_keys[target_ip] = a
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((target_ip,12345))
             s.sendall(str.encode(key_message))
     with lock:
+        print(response_message)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((target_ip,12345))
             s.sendall(str.encode(response_message))
@@ -71,7 +74,10 @@ def tcp_listener( host_name, host_ip, lock ):
             conn, addr = s.accept()
             with conn:
                 while True:
-                    data = conn.recv(1024).decode('ascii').strip()[1:-1].split(',')
+                    raw_data = conn.recv(1024)
+                    if not raw_data:
+                        break
+                    data = raw_data.decode('ascii').strip()[1:-1].split(',')
                     if not data:
                         break
                     print(data)
@@ -85,6 +91,7 @@ def tcp_listener( host_name, host_ip, lock ):
                         B = pow(g,b) % p
                         encryption_keys[data[1].strip()] = pow(A,b) % P
                         pubkey_message = '[' + host_name + ',' + host_ip + ',pubkey,' + str(B) + ']'
+                        print(pubkey_message)
                         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                             s.connect((target_ip,12345))
                             s.sendall(str.encode(response_message))
@@ -115,6 +122,7 @@ except:
     print ("Error: unable to start thread")
 
 announce_message = '[' + username + ',' + host_ip + ',announce]'
+print(announce_message)
 port = 12345
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
