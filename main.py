@@ -5,6 +5,7 @@ P = 11503
 host_ip = "192.168.1.104"
 from threading import Lock
 lock = Lock()
+tcp_lock = Lock()
 ## [emin,192.168.1.2,newKey,G,P,A]
 ## [esra,192.168.1.3,pubkey,B]
 
@@ -33,8 +34,8 @@ def send_message( host_name, target_ip, message, lock ):
             s.sendall(str.encode(key_message))
     with lock:
         wowkey = str(encryption_keys[target_ip])
+        response_message = '[' + host_name + ',' + host_ip + ',message,' + message + ']'
         encrypted_message = pyDes.triple_des(wowkey.ljust(24)).encrypt(message, padmode=2)
-        response_message = '[' + host_name + ',' + host_ip + ',message,' + encrypted_message.decode(ascii) + ']'
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((target_ip,12345))
             s.sendall(str.encode(response_message))
@@ -62,7 +63,7 @@ def announcement_listener( host_name, host_ip ):
                 users[usr] = (ip,time.time())
                 _thread.start_new_thread( send_response, (host_name, host_ip, users[usr][0], ))
 
-def tcp_listener( host_name, host_ip, lock ):
+def tcp_listener( host_name, host_ip, lock, tcp_lock ):
     import socket
     import time
     import random
@@ -74,43 +75,49 @@ def tcp_listener( host_name, host_ip, lock ):
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             s.bind(('',12345))
             s.listen(5)
+            tcp_lock.release()
+            print("accepting connections")
             conn, addr = s.accept()
             with conn:
                 while True:
                     raw_data = conn.recv(1024)
                     if not raw_data:
                         break
-                    data = raw_data.decode('ascii').strip()[1:-1].split(',')
-                    if not data:
-                        break
-                    print(data)
-                    if len(data) < 3:
-                        print("unsupported message type")
-                    elif data[2].strip() == 'newKey':
-                        g = int(data[3].strip())
-                        p = int(data[4].strip())
-                        A = int(data[5].strip())
-                        b = random.randint(1,p-1)
-                        B = pow(g,b) % p
-                        encryption_keys[data[1].strip()] = pow(A,b) % P
-                        pubkey_message = '[' + host_name + ',' + host_ip + ',pubkey,' + str(B) + ']'
-                        print(pubkey_message)
-                        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                            s.connect((data[1].strip(),12345))
-                            s.sendall(str.encode(pubkey_message))
-                    elif data[2].strip() == 'pubkey':
-                        a = encryption_keys[data[1].strip()]
-                        B = int(data[3].strip())
-                        encryption_keys[data[1].strip()] = pow(B,a) % P
-                        lock.release()
-                    elif data[2].strip() == 'response':
-                        if (data[0].strip() not in users) or (data[0].strip() in users and time.time()-users[data[0].strip()][1] > 5):
-                            users[data[0].strip()] = (data[1].strip(),time.time())
-                    elif data[2].strip() == 'message':
-                        wowkey = str(encryption_keys[data[1].strip()])
-                        decrypted = pyDes.triple_des(wowkey.ljust(24)).decrypt(data[3].strip(), padmode=2)
-                        print(data[0].strip() + ": " + data[3].strip())
-                        print(data[0].strip() + ": " + decrypted)
+                    comma = 0
+                    for i in range(1,len(raw_data)):
+                        if raw_data[i].decode('ascii') == ',':
+                            comma += 1
+                        if comma == 3:
+                            header = raw_data[1:i].decode(ascii).strip().split(',')
+                            data = raw_data[i:-1]
+                    print(header)
+                    # if len(data) < 3:
+                    #     print("unsupported message type")
+                    # elif data[2].strip() == 'newKey':
+                    #     g = int(data[3].strip())
+                    #     p = int(data[4].strip())
+                    #     A = int(data[5].strip())
+                    #     b = random.randint(1,p-1)
+                    #     B = pow(g,b) % p
+                    #     encryption_keys[data[1].strip()] = pow(A,b) % P
+                    #     pubkey_message = '[' + host_name + ',' + host_ip + ',pubkey,' + str(B) + ']'
+                    #     print(pubkey_message)
+                    #     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    #         s.connect((data[1].strip(),12345))
+                    #         s.sendall(str.encode(pubkey_message))
+                    # elif data[2].strip() == 'pubkey':
+                    #     a = encryption_keys[data[1].strip()]
+                    #     B = int(data[3].strip())
+                    #     encryption_keys[data[1].strip()] = pow(B,a) % P
+                    #     lock.release()
+                    # elif data[2].strip() == 'response':
+                    #     if (data[0].strip() not in users) or (data[0].strip() in users and time.time()-users[data[0].strip()][1] > 5):
+                    #         users[data[0].strip()] = (data[1].strip(),time.time())
+                    # elif data[2].strip() == 'message':
+                    #     wowkey = str(encryption_keys[data[1].strip()])
+                    #     decrypted = pyDes.triple_des(wowkey.ljust(24)).decrypt(data[3].strip(), padmode=2)
+                    #     print(data[0].strip() + ": " + data[3].strip())
+                    #     print(data[0].strip() + ": " + decrypted)
 
 import _thread
 import sys
@@ -123,7 +130,8 @@ username = input("Enter your username: ")
 
 try:
     _thread.start_new_thread( announcement_listener, ( username, host_ip, ) )
-    _thread.start_new_thread( tcp_listener, (username, host_ip, lock, ) )
+    tcp_lock.acquire()
+    _thread.start_new_thread( tcp_listener, (username, host_ip, lock, tcp_lock,  ) )
 except:
     print ("Error: unable to start thread")
 
@@ -133,6 +141,7 @@ port = 12345
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST,1)
+tcp_lock.acquire()
 print("Broadcasting...")
 for _ in range(3):
     sock.sendto(str.encode(announce_message),('<broadcast>',port))
