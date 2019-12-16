@@ -34,11 +34,11 @@ def send_message( host_name, target_ip, message, lock ):
             s.sendall(str.encode(key_message))
     with lock:
         wowkey = str(encryption_keys[target_ip])
-        response_message = '[' + host_name + ',' + host_ip + ',message,' + message + ']'
         encrypted_message = pyDes.triple_des(wowkey.ljust(24)).encrypt(message, padmode=2)
+        response_message = str.encode('[' + host_name + ',' + host_ip + ',message,') + encrypted_message + str.encode(']')
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((target_ip,12345))
-            s.sendall(str.encode(response_message))
+            s.sendall(response_message)
 
 def announcement_listener( host_name, host_ip ):
     import select, socket
@@ -98,6 +98,7 @@ def tcp_listener( host_name, host_ip, lock, tcp_lock ):
                             break
                     if not header:
                         header = raw_data[1:-1].decode('ascii').split(',')
+                    print(header)
                     if len(header) < 3:
                         print("unsupported message type")
                     elif header[2].strip() == 'newKey':
@@ -123,9 +124,9 @@ def tcp_listener( host_name, host_ip, lock, tcp_lock ):
                         if (header[0].strip() not in users) or (header[0].strip() in users and time.time()-users[header[0].strip()][1] > 5):
                             users[header[0].strip()] = (header[1].strip(),time.time())
                     elif header[2].strip() == 'message':
+                        print(header[0].strip() + ": " + data)
                         wowkey = str(encryption_keys[header[1].strip()])
                         decrypted = pyDes.triple_des(wowkey.ljust(24)).decrypt(data, padmode=2)
-                        print(header[0].strip() + ": " + data)
                         print(header[0].strip() + ": " + decrypted)
 
 import _thread
