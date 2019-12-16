@@ -70,13 +70,16 @@ def tcp_listener( host_name, host_ip, lock, tcp_lock ):
     import pyDes
     global users
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        s.bind(('',12345))
-        s.listen(5)
-        tcp_lock.release()
-        print("accepting connections")
-        while True:
+    while True:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            s.bind(('',12345))
+            s.listen(5)
+            try:
+                tcp_lock.release()
+            except:
+                pass
+            print("accepting connections")
             conn, addr = s.accept()
             with conn:
                 while True:
