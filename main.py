@@ -14,7 +14,6 @@ tcp_lock = Lock()
 def send_response( host_name, host_ip, target_ip ):
     import socket
     response_message = '[' + host_name + ',' + host_ip + ',response]'
-    print(response_message, target_ip)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((target_ip,12345))
         s.sendall(str.encode(response_message))
@@ -28,7 +27,6 @@ def send_message( host_name, target_ip, message, lock ):
         a = random.randint(1,P-1)
         A = pow(G,a) % P
         key_message = '[' + host_name + ',' + host_ip + ',newKey,' + str(G) + ','+ str(P) + ','+ str(A) + ']'
-        print(key_message)
         encryption_keys[target_ip] = a
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((target_ip,12345))
@@ -82,7 +80,6 @@ def tcp_listener( host_name, host_ip, lock, tcp_lock ):
                 tcp_lock.release()
             except:
                 pass
-            print("accepting connections")
             conn, addr = s.accept()
             with conn:
                 while True:
@@ -101,7 +98,6 @@ def tcp_listener( host_name, host_ip, lock, tcp_lock ):
                             break
                     if not header:
                         header = raw_data[1:-1].decode('ascii').split(',')
-                    print(header)
                     if len(header) < 3:
                         print("unsupported message type")
                     elif header[2].strip() == 'newKey':
@@ -113,7 +109,6 @@ def tcp_listener( host_name, host_ip, lock, tcp_lock ):
                         B = pow(g,b) % p
                         encryption_keys[header[1].strip()] = pow(A,b) % P
                         pubkey_message = '[' + host_name + ',' + host_ip + ',pubkey,' + str(B) + ']'
-                        print(pubkey_message)
                         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                             s.connect((header[1].strip(),12345))
                             s.sendall(str.encode(pubkey_message))
@@ -130,8 +125,8 @@ def tcp_listener( host_name, host_ip, lock, tcp_lock ):
                         wowkey = str(encryption_keys[header[1].strip()])
                         decrypted = pyDes.triple_des(wowkey.ljust(24)).decrypt(data, padmode=2).decode("ascii")
                         encryption_keys[header[1].strip()] = encryption_keys[header[1].strip()] * len(decrypted) % P
-                        print("new key", encryption_keys[header[1].strip()])
                         print(header[0].strip() + ": " + decrypted)
+                        print("new key", encryption_keys[header[1].strip()])
 
 import _thread
 import sys
