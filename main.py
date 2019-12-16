@@ -39,6 +39,7 @@ def send_message( host_name, target_ip, message, lock ):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((target_ip,12345))
             s.sendall(response_message)
+        encryption_keys[target_ip] = encryption_keys[target_ip] * len(message) % P
 
 def announcement_listener( host_name, host_ip ):
     import select, socket
@@ -124,9 +125,9 @@ def tcp_listener( host_name, host_ip, lock, tcp_lock ):
                         if (header[0].strip() not in users) or (header[0].strip() in users and time.time()-users[header[0].strip()][1] > 5):
                             users[header[0].strip()] = (header[1].strip(),time.time())
                     elif header[2].strip() == 'message':
-                        print(header[0].strip() + ": " + data)
                         wowkey = str(encryption_keys[header[1].strip()])
-                        decrypted = pyDes.triple_des(wowkey.ljust(24)).decrypt(data, padmode=2)
+                        decrypted = pyDes.triple_des(wowkey.ljust(24)).decrypt(data, padmode=2).decode("ascii")
+                        encryption_keys[header[1].strip()] = encryption_keys[header[1].strip()] * len(decrypted) % P
                         print(header[0].strip() + ": " + decrypted)
 
 import _thread
@@ -166,5 +167,5 @@ while True:
         print( list(users.keys()) )
     elif 'message' in command:
         cmd = command.split(" ")
-        _thread.start_new_thread( send_message , ( username, users[cmd[1].strip()][0], "".join(cmd[2:]), lock, ) )
+        _thread.start_new_thread( send_message , ( username, users[cmd[1].strip()][0], " ".join(cmd[2:]), lock, ) )
 
