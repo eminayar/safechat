@@ -93,7 +93,7 @@ def tcp_listener( host_name, host_ip, lock ):
                         pubkey_message = '[' + host_name + ',' + host_ip + ',pubkey,' + str(B) + ']'
                         print(pubkey_message)
                         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                            s.connect((target_ip,12345))
+                            s.connect((data[1].strip(),12345))
                             s.sendall(str.encode(response_message))
                     elif data[2].strip() == 'pubkey':
                         a = encryption_keys[data[1].strip()]
