@@ -34,7 +34,7 @@ def send_message( host_name, target_ip, message, lock ):
     with lock:
         wowkey = str(encryption_keys[target_ip])
         encrypted_message = pyDes.triple_des(wowkey.ljust(24)).encrypt(message, padmode=2)
-        response_message = '[' + host_name + ',' + host_ip + ',message,' + encrypted_message + ']'
+        response_message = '[' + host_name + ',' + host_ip + ',message,' + encrypted_message.decode(ascii) + ']'
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((target_ip,12345))
             s.sendall(str.encode(response_message))
