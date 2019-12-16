@@ -32,7 +32,7 @@ def send_message( host_name, target_ip, message, lock ):
             s.connect((target_ip,12345))
             s.sendall(str.encode(key_message))
     with lock:
-        print(response_message)
+        print(encryption_keys[target_ip])
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((target_ip,12345))
             s.sendall(str.encode(response_message))
@@ -104,6 +104,7 @@ def tcp_listener( host_name, host_ip, lock ):
                         if (data[0].strip() not in users) or (data[0].strip() in users and time.time()-users[data[0].strip()][1] > 5):
                             users[data[0].strip()] = (data[1].strip(),time.time())
                     elif data[2].strip() == 'message':
+                        print(encryption_keys[data[1].strip()])
                         print(data[0].strip() + ": " + data[3].strip())    
 
 import _thread
