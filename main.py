@@ -66,8 +66,7 @@ def tcp_listener( host_name, host_ip, lock ):
     import random
     global users
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    with socket.socket() as s:
         s.bind(('',12345))
         s.listen(5)
         while True:
