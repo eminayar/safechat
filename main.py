@@ -19,8 +19,8 @@ def send_response( host_name, host_ip, target_ip ):
 
 def send_message( host_name, target_ip, message, lock ):
     import socket
+    import pyDes
     import random
-    response_message = '[' + host_name + ',' + host_ip + ',message,' + message + ']'
     if target_ip not in encryption_keys:
         lock.acquire()
         a = random.randint(1,P-1)
@@ -32,7 +32,9 @@ def send_message( host_name, target_ip, message, lock ):
             s.connect((target_ip,12345))
             s.sendall(str.encode(key_message))
     with lock:
-        print(encryption_keys[target_ip])
+        wowkey = str(encryption_keys[target_ip])
+        encrypted_message = pyDes.triple_des(wowkey.ljust(24)).encrypt(message, padmode=2)
+        response_message = '[' + host_name + ',' + host_ip + ',message,' + encrypted_message + ']'
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((target_ip,12345))
             s.sendall(str.encode(response_message))
@@ -64,6 +66,7 @@ def tcp_listener( host_name, host_ip, lock ):
     import socket
     import time
     import random
+    import pyDes
     global users
 
     while True:
@@ -104,8 +107,10 @@ def tcp_listener( host_name, host_ip, lock ):
                         if (data[0].strip() not in users) or (data[0].strip() in users and time.time()-users[data[0].strip()][1] > 5):
                             users[data[0].strip()] = (data[1].strip(),time.time())
                     elif data[2].strip() == 'message':
-                        print(encryption_keys[data[1].strip()])
-                        print(data[0].strip() + ": " + data[3].strip())    
+                        wowkey = str(encryption_keys[data[1].strip()])
+                        decrypted = pyDes.triple_des(wowkey.ljust(24)).decrypt(data[3].strip(), padmode=2)
+                        print(data[0].strip() + ": " + data[3].strip())
+                        print(data[0].strip() + ": " + decrypted)
 
 import _thread
 import sys
