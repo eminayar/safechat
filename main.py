@@ -12,7 +12,7 @@ lock = Lock()
 def send_response( host_name, host_ip, target_ip ):
     import socket
     response_message = '[' + host_name + ',' + host_ip + ',response]'
-    print(response_message)
+    print(response_message, target_ip)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((target_ip,12345))
         s.sendall(str.encode(response_message))
