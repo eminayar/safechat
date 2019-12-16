@@ -84,40 +84,46 @@ def tcp_listener( host_name, host_ip, lock, tcp_lock ):
                     if not raw_data:
                         break
                     comma = 0
+                    header = ""
+                    data = ""
                     for i in range(1,len(raw_data)):
-                        if raw_data[i].decode('ascii') == ',':
+                        if raw_data[i:i+1].decode('ascii') == ',':
                             comma += 1
                         if comma == 3:
-                            header = raw_data[1:i].decode(ascii).strip().split(',')
-                            data = raw_data[i:-1]
-                    print(header)
-                    # if len(data) < 3:
-                    #     print("unsupported message type")
-                    # elif data[2].strip() == 'newKey':
-                    #     g = int(data[3].strip())
-                    #     p = int(data[4].strip())
-                    #     A = int(data[5].strip())
-                    #     b = random.randint(1,p-1)
-                    #     B = pow(g,b) % p
-                    #     encryption_keys[data[1].strip()] = pow(A,b) % P
-                    #     pubkey_message = '[' + host_name + ',' + host_ip + ',pubkey,' + str(B) + ']'
-                    #     print(pubkey_message)
-                    #     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    #         s.connect((data[1].strip(),12345))
-                    #         s.sendall(str.encode(pubkey_message))
-                    # elif data[2].strip() == 'pubkey':
-                    #     a = encryption_keys[data[1].strip()]
-                    #     B = int(data[3].strip())
-                    #     encryption_keys[data[1].strip()] = pow(B,a) % P
-                    #     lock.release()
-                    # elif data[2].strip() == 'response':
-                    #     if (data[0].strip() not in users) or (data[0].strip() in users and time.time()-users[data[0].strip()][1] > 5):
-                    #         users[data[0].strip()] = (data[1].strip(),time.time())
-                    # elif data[2].strip() == 'message':
-                    #     wowkey = str(encryption_keys[data[1].strip()])
-                    #     decrypted = pyDes.triple_des(wowkey.ljust(24)).decrypt(data[3].strip(), padmode=2)
-                    #     print(data[0].strip() + ": " + data[3].strip())
-                    #     print(data[0].strip() + ": " + decrypted)
+                            header = raw_data[1:i].decode('ascii').strip().split(',')
+                            data = raw_data[i+1:-1]
+                            break
+                    if not header:
+                        header = raw_data[1:-1].decode('ascii').split('',')
+                    if len(header) < 3:
+                        print("unsupported message type")
+                    elif header[2].strip() == 'newKey':
+                        data = data.decode('ascii').strip().split(',')
+                        g = int(data[0].strip())
+                        p = int(data[1].strip())
+                        A = int(data[2].strip())
+                        b = random.randint(1,p-1)
+                        B = pow(g,b) % p
+                        encryption_keys[header[1].strip()] = pow(A,b) % P
+                        pubkey_message = '[' + host_name + ',' + host_ip + ',pubkey,' + str(B) + ']'
+                        print(pubkey_message)
+                        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                            s.connect((header[1].strip(),12345))
+                            s.sendall(str.encode(pubkey_message))
+                    elif header[2].strip() == 'pubkey':
+                        data = data.decode('ascii').strip()
+                        a = encryption_keys[header[1].strip()]
+                        B = int(data)
+                        encryption_keys[header[1].strip()] = pow(B,a) % P
+                        lock.release()
+                    elif header[2].strip() == 'response':
+                        if (header[0].strip() not in users) or (header[0].strip() in users and time.time()-users[header[0].strip()][1] > 5):
+                            users[header[0].strip()] = (header[1].strip(),time.time())
+                    elif header[2].strip() == 'message':
+                        wowkey = str(encryption_keys[header[1].strip()])
+                        decrypted = pyDes.triple_des(wowkey.ljust(24)).decrypt(data, padmode=2)
+                        print(header[0].strip() + ": " + data)
+                        print(header[0].strip() + ": " + decrypted)
 
 import _thread
 import sys
