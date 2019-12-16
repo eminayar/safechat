@@ -70,13 +70,13 @@ def tcp_listener( host_name, host_ip, lock, tcp_lock ):
     import pyDes
     global users
 
-    while True:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            s.bind(('',12345))
-            s.listen(5)
-            tcp_lock.release()
-            print("accepting connections")
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind(('',12345))
+        s.listen(5)
+        tcp_lock.release()
+        print("accepting connections")
+        while True:
             conn, addr = s.accept()
             with conn:
                 while True:
@@ -94,7 +94,7 @@ def tcp_listener( host_name, host_ip, lock, tcp_lock ):
                             data = raw_data[i+1:-1]
                             break
                     if not header:
-                        header = raw_data[1:-1].decode('ascii').split('',')
+                        header = raw_data[1:-1].decode('ascii').split(',')
                     if len(header) < 3:
                         print("unsupported message type")
                     elif header[2].strip() == 'newKey':
