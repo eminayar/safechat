@@ -66,44 +66,44 @@ def tcp_listener( host_name, host_ip, lock ):
     import random
     global users
 
-    with socket.socket() as s:
-        s.bind(('',12345))
-        s.listen(5)
-        while True:
-            conn, addr = s.accept()
-            with conn:
-                while True:
-                    raw_data = conn.recv(1024)
-                    if not raw_data:
-                        break
-                    data = raw_data.decode('ascii').strip()[1:-1].split(',')
-                    if not data:
-                        break
-                    print(data)
-                    if len(data) < 3:
-                        print("unsupported message type")
-                    elif data[2].strip() == 'newKey':
-                        g = int(data[3].strip())
-                        p = int(data[4].strip())
-                        A = int(data[5].strip())
-                        b = random.randint(1,p-1)
-                        B = pow(g,b) % p
-                        encryption_keys[data[1].strip()] = pow(A,b) % P
-                        pubkey_message = '[' + host_name + ',' + host_ip + ',pubkey,' + str(B) + ']'
-                        print(pubkey_message)
-                        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                            s.connect((data[1].strip(),12345))
-                            s.sendall(str.encode(pubkey_message))
-                    elif data[2].strip() == 'pubkey':
-                        a = encryption_keys[data[1].strip()]
-                        B = int(data[3].strip())
-                        encryption_keys[data[1].strip()] = pow(B,a) % P
-                        lock.release()
-                    elif data[2].strip() == 'response':
-                        if (data[0].strip() not in users) or (data[0].strip() in users and time.time()-users[data[0].strip()][1] > 5):
-                            users[data[0].strip()] = (data[1].strip(),time.time())
-                    elif data[2].strip() == 'message':
-                        print(data[0].strip() + ": " + data[3].strip())    
+    s = socket.socket()
+    s.bind(('',12345))
+    s.listen(5)
+    while True:
+        conn, addr = s.accept()
+        with conn:
+            while True:
+                raw_data = conn.recv(1024)
+                if not raw_data:
+                    break
+                data = raw_data.decode('ascii').strip()[1:-1].split(',')
+                if not data:
+                    break
+                print(data)
+                if len(data) < 3:
+                    print("unsupported message type")
+                elif data[2].strip() == 'newKey':
+                    g = int(data[3].strip())
+                    p = int(data[4].strip())
+                    A = int(data[5].strip())
+                    b = random.randint(1,p-1)
+                    B = pow(g,b) % p
+                    encryption_keys[data[1].strip()] = pow(A,b) % P
+                    pubkey_message = '[' + host_name + ',' + host_ip + ',pubkey,' + str(B) + ']'
+                    print(pubkey_message)
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                        s.connect((data[1].strip(),12345))
+                        s.sendall(str.encode(pubkey_message))
+                elif data[2].strip() == 'pubkey':
+                    a = encryption_keys[data[1].strip()]
+                    B = int(data[3].strip())
+                    encryption_keys[data[1].strip()] = pow(B,a) % P
+                    lock.release()
+                elif data[2].strip() == 'response':
+                    if (data[0].strip() not in users) or (data[0].strip() in users and time.time()-users[data[0].strip()][1] > 5):
+                        users[data[0].strip()] = (data[1].strip(),time.time())
+                elif data[2].strip() == 'message':
+                    print(data[0].strip() + ": " + data[3].strip())    
 
 import _thread
 import sys
